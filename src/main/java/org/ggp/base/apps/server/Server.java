@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import javax.swing.AbstractAction;
+import javax.swing.AbstractButton;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -28,6 +29,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
+import javax.swing.JToggleButton;
 import javax.swing.SpinnerNumberModel;
 
 import org.ggp.base.apps.server.leaderboard.LeaderboardPanel;
@@ -66,15 +68,15 @@ public final class Server extends JPanel implements ActionListener
 
 	public static void main(String[] args)
 	{
-	    NativeUI.setNativeUI();
-	    GdlPool.caseSensitive = false;
+		NativeUI.setNativeUI();
+		GdlPool.caseSensitive = false;
 
 
 		final Server serverPanel = new Server();
 
-	    ListenerThread listen = serverPanel.new ListenerThread();
+		//ListenerThread listen = serverPanel.new ListenerThread();
 		//listen.run();
-	    listen.start();
+		//listen.start();
 
 		javax.swing.SwingUtilities.invokeLater(new Runnable()
 		{
@@ -86,6 +88,9 @@ public final class Server extends JPanel implements ActionListener
 			}
 		});
 	}
+
+	//TODO
+	private ListenerThread listenThread;
 
 	private Game theGame;
 
@@ -117,7 +122,9 @@ public final class Server extends JPanel implements ActionListener
 
 	private final Scheduler scheduler;
 
-	//private final JSpinner portSpinner;
+	//TODO
+	private final JSpinner portSpinner;
+	private final JToggleButton portThreadRunButton;
 
 	public Server()
 	{
@@ -175,8 +182,9 @@ public final class Server extends JPanel implements ActionListener
 		playersPanel.add(new JButton(removePlayerButtonMethod()), new GridBagConstraints(1, nRowCount, 1, 1, 0.0, 1.0, GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(5, 5, 5, 5), 0, 0));
 		playersPanel.add(new JButton(testPlayerButtonMethod()), new GridBagConstraints(2, nRowCount++, 1, 1, 1.0, 1.0, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(5, 5, 5, 5), 0, 0));
 
+		// ***************************************
 		//TODO
-		//portSpinner = new JSpinner(new SpinnerNumberModel(9000, 9000, 9999, 1));
+		portSpinner = new JSpinner(new SpinnerNumberModel(9000, 9000, 50000, 1));
 		/*
 		new SpinnerNumberModel(	9000,	// initial value
 				                9000,	// min
@@ -184,9 +192,52 @@ public final class Server extends JPanel implements ActionListener
 				                1);		// step
 		*/
 
-		//playersPanel.add(new JLabelBold("Listener"), new GridBagConstraints(0, nRowCount, 3, 1, 0.0, 0.0, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(5, 25, 5, 5), 0, 0));
-		//playersPanel.add(portSpinner, new GridBagConstraints(1, nRowCount, 3, 1, 0.0, 0.0, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(5, 5, 5, 5), 0, 0));
+		playersPanel.add(new JLabelBold("Listener"), new GridBagConstraints(0, nRowCount, 3, 1, 0.0, 0.0, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(5, 25, 5, 5), 0, 0));
+		playersPanel.add(portSpinner, new GridBagConstraints(1, nRowCount, 3, 1, 0.0, 0.0, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(5, 5, 5, 5), 0, 0));
+		//playersPanel.add(new JButton(listenButtonMethod()), new GridBagConstraints(2, nRowCount++, 3, 1, 0.0, 0.0, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(5, 5, 5, 5), 0, 0));
 
+		portThreadRunButton = new JToggleButton("Listen!");
+		playersPanel.add(portThreadRunButton, new GridBagConstraints(2, nRowCount++, 3, 1, 0.0, 0.0, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(5, 5, 5, 5), 0, 0));
+
+		portThreadRunButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent actionEvent) {
+				AbstractButton abstractButton = (AbstractButton) actionEvent.getSource();
+
+				boolean selected = abstractButton.getModel().isSelected();
+				//System.out.println("Action - selected=" + selected + "\n");
+
+				if(selected) {
+					System.out.println("Listener: ON!");
+
+					int value = (Integer) portSpinner.getValue();
+					System.out.println("PORT: "+ value);
+
+					//listen = serverPanel.new ListenerThread();
+					listenThread = new ListenerThread();
+					listenThread.start();
+
+				} else {
+					System.out.println("Listener: OFF");
+
+					try {
+						if(listener!=null) {
+							listener.close();
+
+							//listenThread.interrupt();
+							listenThread.stop();
+						}
+
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						//e.printStackTrace();
+						System.out.println("Closing listener");
+					}
+				}
+			}
+		});
+
+		// ***************************************
 
 
 		nRowCount = 0;
@@ -197,11 +248,11 @@ public final class Server extends JPanel implements ActionListener
 		this.add(managerPanel, new GridBagConstraints(0, 0, 1, 1, 0.0, 1.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5), 5, 5));
 		this.add(matchesTabbedPane, new GridBagConstraints(1, 0, 1, 1, 1.0, 1.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5), 5, 5));
 
-        gameSelector.getGameList().addActionListener(this);
-        gameSelector.repopulateGameList();
+		gameSelector.getGameList().addActionListener(this);
+		gameSelector.repopulateGameList();
 
-        schedulingPanel = new SchedulingPanel();
-        leaderboardPanel = new LeaderboardPanel();
+		schedulingPanel = new SchedulingPanel();
+		leaderboardPanel = new LeaderboardPanel();
 		matchesTabbedPane.addTab("Overview", new OverviewPanel());
 
 		scheduler = new Scheduler(matchesTabbedPane, schedulingPanel, leaderboardPanel);
@@ -221,43 +272,89 @@ public final class Server extends JPanel implements ActionListener
 		}
 	}
 
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == gameSelector.getGameList()) {
-            theGame = gameSelector.getSelectedGame();
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		if (e.getSource() == gameSelector.getGameList()) {
+			theGame = gameSelector.getSelectedGame();
 
-            for (int i = 0; i < roleLabels.size(); i++) {
-                gamePanel.remove(roleLabels.get(i));
-                gamePanel.remove(playerFields.get(i));
-            }
+			for (int i = 0; i < roleLabels.size(); i++) {
+				gamePanel.remove(roleLabels.get(i));
+				gamePanel.remove(playerFields.get(i));
+			}
 
-            roleLabels.clear();
-            playerFields.clear();
+			roleLabels.clear();
+			playerFields.clear();
 
-            validate();
-            runButton.setEnabled(false);
-            if (theGame == null)
-                return;
+			validate();
+			runButton.setEnabled(false);
+			if (theGame == null)
+				return;
 
-            StateMachine stateMachine = new ProverStateMachine();
-            stateMachine.initialize(theGame.getRules());
-            List<Role> roles = stateMachine.getRoles();
+			StateMachine stateMachine = new ProverStateMachine();
+			stateMachine.initialize(theGame.getRules());
+			List<Role> roles = stateMachine.getRoles();
 
-            int newRowCount = 11;
-            for (int i = 0; i < roles.size(); i++) {
-                roleLabels.add(new JLabel(roles.get(i).getName().toString() + ":"));
-                playerFields.add(playerSelector.getPlayerSelectorBox());
-                playerFields.get(i).setSelectedIndex(i%playerFields.get(i).getModel().getSize());
+			int newRowCount = 11;
+			for (int i = 0; i < roles.size(); i++) {
+				roleLabels.add(new JLabel(roles.get(i).getName().toString() + ":"));
+				playerFields.add(playerSelector.getPlayerSelectorBox());
+				playerFields.get(i).setSelectedIndex(i%playerFields.get(i).getModel().getSize());
 
-                gamePanel.add(roleLabels.get(i), new GridBagConstraints(0, newRowCount, 1, 1, 1.0, 0.0, GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(1, 5, 1, 5), 5, 5));
-                gamePanel.add(playerFields.get(i), new GridBagConstraints(1, newRowCount++, 1, 1, 0.0, 0.0, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(1, 5, 1, 5), 5, 5));
-            }
-            gamePanel.add(runButton, new GridBagConstraints(1, newRowCount, 1, 1, 0.0, 1.0, GridBagConstraints.SOUTH, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
+				gamePanel.add(roleLabels.get(i), new GridBagConstraints(0, newRowCount, 1, 1, 1.0, 0.0, GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(1, 5, 1, 5), 5, 5));
+				gamePanel.add(playerFields.get(i), new GridBagConstraints(1, newRowCount++, 1, 1, 0.0, 0.0, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(1, 5, 1, 5), 5, 5));
+			}
+			gamePanel.add(runButton, new GridBagConstraints(1, newRowCount, 1, 1, 0.0, 1.0, GridBagConstraints.SOUTH, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
 
-            validate();
-            runButton.setEnabled(true);
-        }
-    }
+			validate();
+			runButton.setEnabled(true);
+		}
+	}
+
+
+	//TODO
+	private AbstractAction listenButtonMethod() {
+		return new AbstractAction("Listen!") {
+
+			@Override
+			public void actionPerformed(ActionEvent evt) {
+
+				System.out.println("LISTEN BUTTON.");
+
+				int value = (Integer) portSpinner.getValue();
+				System.out.println("PORT: "+ value);
+
+
+
+				try {
+					if(listener!=null) {
+						listener.close();
+						listenThread.stop();
+					}
+
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					//e.printStackTrace();
+					System.out.println("Closing listener");
+				}
+
+
+				//listen = serverPanel.new ListenerThread();
+				listenThread = new ListenerThread();
+				listenThread.start();
+
+
+//				if (playerSelectorList.getSelectedValue() != null) {
+//
+//					Game testGame = GameRepository.getDefaultRepository().getGame("maze");
+//					String playerName = playerSelectorList.getSelectedValue().toString();
+//					List<PlayerPresence> thePlayers = Arrays.asList(new PlayerPresence[]{playerSelector.getPlayerPresence(playerName)});
+//					scheduler.addPendingMatch(new PendingMatch("Test", testGame, thePlayers, -1, 10, 5, false, false, true, false, false));
+//				}
+			}
+
+		};
+	}
+
 
 	private AbstractAction runButtonMethod() {
 		return new AbstractAction("Start a new match!") {
@@ -268,8 +365,8 @@ public final class Server extends JPanel implements ActionListener
 
 				List<PlayerPresence> thePlayers = new ArrayList<PlayerPresence>();
 				for (JComboBox<String> playerField : playerFields) {
-                	String name = playerField.getSelectedItem().toString();
-                	thePlayers.add(playerSelector.getPlayerPresence(name));
+					String name = playerField.getSelectedItem().toString();
+					thePlayers.add(playerSelector.getPlayerPresence(name));
 				}
 
 				synchronized (scheduler) {
@@ -329,8 +426,8 @@ public final class Server extends JPanel implements ActionListener
 
 
 
+	//TODO
 	private ServerSocket listener;
-
 
 	class ListenerThread extends Thread {
 		//public ListenerThread(String str) {
@@ -341,16 +438,16 @@ public final class Server extends JPanel implements ActionListener
 		public void run() {
 
 			try {
-				listener = new ServerSocket(9002);
+				listener = new ServerSocket( (Integer) portSpinner.getValue() );
+				System.out.println("Starting at port: "+(Integer) portSpinner.getValue());
 			} catch (IOException e1) {
 				listener = null;
-				System.out.println("Fail at listener!");
+				System.out.println("Fail at creating ServerSocket listener!");
 				e1.printStackTrace();
 			}
-			System.out.println("String: " + this.getName() + " is running...");
+			System.out.println("ThreadName: " + this.getName() + " is running...");
 
 			while (listener != null) {
-
 
 				try {
 					System.out.println("before accept()");
@@ -379,17 +476,17 @@ public final class Server extends JPanel implements ActionListener
 					while (!endOfLine) {
 						line = br.readLine();
 
-			            if(line==null)
-			            	// Should not be able to get here - readLine() in requests blocks!
-			            	break;
-			            else if (line.equals(""))
-			            	System.out.println("<blanc line>");
-			            else if(line.equals("\n"))
-			            	System.out.println("<newline>");
-			            else if(line.equals("\r\n"))
-			            	System.out.println("<WINnewline>");
+						if(line==null)
+							// Should not be able to get here - readLine() in requests blocks!
+							break;
+						else if (line.equals(""))
+							System.out.println("<blanc line>");
+						else if(line.equals("\n"))
+							System.out.println("<newline>");
+						else if(line.equals("\r\n"))
+							System.out.println("<WINnewline>");
 
-			            //MAIN PARSING REQUEST:
+							//MAIN PARSING REQUEST:
 			            /*
 			            else if(line.toLowerCase().startsWith("host:")) {
 
@@ -399,32 +496,32 @@ public final class Server extends JPanel implements ActionListener
 			            }
 			            */
 
-			            else if(line.toLowerCase().contains("boundary=")) {
-			            	System.out.println("boundary-line: " + line);
-			            	String[] parts = line.toLowerCase().split("boundary=");
-			            	System.out.println(parts[0]);
-			            	System.out.println(parts[1]);
-			            	//line.toLowerCase().replace("content-type: multipart/mixed; boundary=", "").trim();
-			            	boundary = parts[1];
-			            }
+						else if(line.toLowerCase().contains("boundary=")) {
+							System.out.println("boundary-line: " + line);
+							String[] parts = line.toLowerCase().split("boundary=");
+							System.out.println(parts[0]);
+							System.out.println(parts[1]);
+							//line.toLowerCase().replace("content-type: multipart/mixed; boundary=", "").trim();
+							boundary = parts[1];
+						}
 
-			            else if(line.toLowerCase().startsWith("content-length:")) {
-			            	contentLength = Integer.parseInt(line.toLowerCase().replace("content-length:", "").trim());
-			            	System.out.println("|CONTENT_LENGTH: "+contentLength+"|");
-			            }
+						else if(line.toLowerCase().startsWith("content-length:")) {
+							contentLength = Integer.parseInt(line.toLowerCase().replace("content-length:", "").trim());
+							System.out.println("|CONTENT_LENGTH: "+contentLength+"|");
+						}
 
-			            else if(boundary!=null && line.toLowerCase().contains(boundary)) {
-			            	// line with nothing...
-			            }
+						else if(boundary!=null && line.toLowerCase().contains(boundary)) {
+							// line with nothing...
+						}
 
-			            else {
-			            	if(startMSG) {
-			            		theContent.append(line);
-					            theContent.append(" ");
-			            	}
+						else {
+							if(startMSG) {
+								theContent.append(line);
+								theContent.append(" ");
+							}
 
-				            System.out.println("||"+line+"||");
-			            }
+							System.out.println("||"+line+"||");
+						}
 
 
 						if(contentLength>=0) {
@@ -437,7 +534,7 @@ public final class Server extends JPanel implements ActionListener
 							}
 						}
 
-			        }
+					}
 
 
 
@@ -448,19 +545,19 @@ public final class Server extends JPanel implements ActionListener
 
 
 					if (in.length() == 0) {
-					    throw new IOException("Empty message received.");
+						throw new IOException("Empty message received.");
 					}
 
-					System.out.println("ITS ALIVE!!!:\n"+in);
+					//System.out.println("ITS ALIVE!!!:\n"+in);
 
 					String data = "Sample response.";
 					HttpWriter.writeAsServer(connection, data);
 
-					} catch (Exception e) {
-						System.out.println("EXCEPTION.");
-						e.printStackTrace();
-					}
+				} catch (Exception e) {
+					System.out.println("EXCEPTION.");
+					e.printStackTrace();
 				}
+			}
 
 
 
